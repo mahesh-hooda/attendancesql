@@ -55,7 +55,6 @@ try {
             } elseif (stripos($statement, 'INSERT INTO') !== false) {
                 preg_match('/INSERT INTO\s+(\w+)/i', $statement, $matches);
                 $table = $matches[1] ?? 'unknown';
-                $rows = $conn->lastInsertRowId();
                 // Count how many value sets
                 $value_count = substr_count($statement, '),(') + 1;
                 if ($value_count > 1) {
