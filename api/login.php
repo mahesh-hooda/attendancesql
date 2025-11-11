@@ -19,16 +19,15 @@ $conn = getDbConnection();
 // ===============================================
 // SQL DEMO: SELECT query with WHERE clause
 // Authenticating user based on email and password
+// Using PDO prepared statements for security
 // ===============================================
 if ($userType === 'student') {
-    $sql = "SELECT student_id, roll_number, name, email FROM students WHERE email = ? AND password = ?";
+    $sql = "SELECT student_id, roll_number, name, email FROM students WHERE email = :email AND password = :password";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ss", $email, $password);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt->execute(['email' => $email, 'password' => $password]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows === 1) {
-        $user = $result->fetch_assoc();
+    if ($user) {
         $_SESSION['user_id'] = $user['student_id'];
         $_SESSION['user_type'] = 'student';
         $_SESSION['user_name'] = $user['name'];
@@ -46,16 +45,14 @@ if ($userType === 'student') {
 } else if ($userType === 'teacher') {
     // ===============================================
     // SQL DEMO: SELECT query with prepared statements
-    // Preventing SQL injection using parameterized queries
+    // Preventing SQL injection using parameterized queries with PDO
     // ===============================================
-    $sql = "SELECT teacher_id, name, email, department FROM teachers WHERE email = ? AND password = ?";
+    $sql = "SELECT teacher_id, name, email, department FROM teachers WHERE email = :email AND password = :password";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ss", $email, $password);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt->execute(['email' => $email, 'password' => $password]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows === 1) {
-        $user = $result->fetch_assoc();
+    if ($user) {
         $_SESSION['user_id'] = $user['teacher_id'];
         $_SESSION['user_type'] = 'teacher';
         $_SESSION['user_name'] = $user['name'];
@@ -73,6 +70,6 @@ if ($userType === 'student') {
     echo json_encode(['success' => false, 'message' => 'Invalid user type']);
 }
 
-$stmt->close();
-$conn->close();
+$stmt = null;
+$conn = null;
 ?>

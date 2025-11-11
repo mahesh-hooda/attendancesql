@@ -1,6 +1,6 @@
 -- ===============================================
 -- NSUT IT Branch Attendance Portal Database
--- SQL Demo Project
+-- SQL Demo Project - SQLite Version
 -- ===============================================
 
 -- Drop existing tables if they exist
@@ -13,16 +13,17 @@ DROP TABLE IF EXISTS students;
 -- ===============================================
 -- SQL DEMO 1: CREATE TABLE with constraints
 -- Creating Students table with primary key and unique constraints
+-- SQLite uses AUTOINCREMENT instead of AUTO_INCREMENT
 -- ===============================================
 CREATE TABLE students (
-    student_id INT PRIMARY KEY AUTO_INCREMENT,
-    roll_number VARCHAR(20) UNIQUE NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    branch VARCHAR(50) DEFAULT 'IT',
-    semester INT DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    student_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    roll_number TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    branch TEXT DEFAULT 'IT',
+    semester INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ===============================================
@@ -30,56 +31,58 @@ CREATE TABLE students (
 -- Creating Teachers table
 -- ===============================================
 CREATE TABLE teachers (
-    teacher_id INT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    department VARCHAR(50) DEFAULT 'IT',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    teacher_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    department TEXT DEFAULT 'IT',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ===============================================
 -- SQL DEMO 3: CREATE TABLE for Subjects
 -- ===============================================
 CREATE TABLE subjects (
-    subject_id INT PRIMARY KEY AUTO_INCREMENT,
-    subject_code VARCHAR(20) UNIQUE NOT NULL,
-    subject_name VARCHAR(100) NOT NULL,
-    semester INT NOT NULL,
-    credits INT DEFAULT 3,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    subject_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_code TEXT UNIQUE NOT NULL,
+    subject_name TEXT NOT NULL,
+    semester INTEGER NOT NULL,
+    credits INTEGER DEFAULT 3,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ===============================================
 -- SQL DEMO 4: CREATE TABLE with composite relationships
 -- Mapping teachers to subjects (one-to-many)
+-- SQLite enforces foreign keys when enabled
 -- ===============================================
 CREATE TABLE subject_teacher_mapping (
-    mapping_id INT PRIMARY KEY AUTO_INCREMENT,
-    subject_id INT NOT NULL,
-    teacher_id INT NOT NULL,
-    academic_year VARCHAR(20) DEFAULT '2024-25',
+    mapping_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_id INTEGER NOT NULL,
+    teacher_id INTEGER NOT NULL,
+    academic_year TEXT DEFAULT '2024-25',
     FOREIGN KEY (subject_id) REFERENCES subjects(subject_id) ON DELETE CASCADE,
     FOREIGN KEY (teacher_id) REFERENCES teachers(teacher_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_subject_teacher (subject_id, teacher_id, academic_year)
+    UNIQUE (subject_id, teacher_id, academic_year)
 );
 
 -- ===============================================
 -- SQL DEMO 5: CREATE TABLE for attendance records
 -- Complex table with multiple foreign keys
+-- SQLite uses CHECK constraint instead of ENUM
 -- ===============================================
 CREATE TABLE attendance (
-    attendance_id INT PRIMARY KEY AUTO_INCREMENT,
-    student_id INT NOT NULL,
-    subject_id INT NOT NULL,
-    teacher_id INT NOT NULL,
+    attendance_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL,
+    subject_id INTEGER NOT NULL,
+    teacher_id INTEGER NOT NULL,
     date DATE NOT NULL,
-    status ENUM('Present', 'Absent') NOT NULL,
-    marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status TEXT NOT NULL CHECK(status IN ('Present', 'Absent')),
+    marked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
     FOREIGN KEY (subject_id) REFERENCES subjects(subject_id) ON DELETE CASCADE,
     FOREIGN KEY (teacher_id) REFERENCES teachers(teacher_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_attendance (student_id, subject_id, date)
+    UNIQUE (student_id, subject_id, date)
 );
 
 -- ===============================================
@@ -181,7 +184,7 @@ SELECT
     subj.subject_name,
     COUNT(a.attendance_id) AS total_classes,
     SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END) AS classes_attended,
-    ROUND((SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END) / COUNT(a.attendance_id)) * 100, 2) AS attendance_percentage
+    ROUND((SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END) * 100.0 / COUNT(a.attendance_id)), 2) AS attendance_percentage
 FROM students s
 CROSS JOIN subjects subj
 LEFT JOIN attendance a ON s.student_id = a.student_id AND subj.subject_id = a.subject_id

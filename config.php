@@ -1,27 +1,31 @@
 <?php
 // ===============================================
-// Database Configuration
+// Database Configuration - SQLite Version
 // ===============================================
 
-// Database credentials
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'nsut_attendance');
+// Database file path
+define('DB_PATH', __DIR__ . '/nsut_attendance.db');
 
 // ===============================================
-// SQL DEMO: Database Connection using MySQLi
-// Establishing connection to MySQL database
+// SQL DEMO: Database Connection using PDO (SQLite)
+// Establishing connection to SQLite database
+// PDO provides a consistent interface for different databases
 // ===============================================
 function getDbConnection() {
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    try {
+        // Create PDO instance for SQLite
+        $conn = new PDO('sqlite:' . DB_PATH);
 
-    // Check connection
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
+        // Set error mode to exceptions for better error handling
+        $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // Enable foreign key constraints (disabled by default in SQLite)
+        $conn->exec('PRAGMA foreign_keys = ON;');
+
+        return $conn;
+    } catch(PDOException $e) {
+        die("Connection failed: " . $e->getMessage());
     }
-
-    return $conn;
 }
 
 // Session configuration

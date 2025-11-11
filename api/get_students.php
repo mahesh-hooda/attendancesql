@@ -22,6 +22,7 @@ $conn = getDbConnection();
 // SQL DEMO: LEFT JOIN query
 // Fetching all students with their attendance status for a specific date
 // Using LEFT JOIN to include students even if attendance not marked
+// Using PDO with named parameters
 // ===============================================
 $sql = "SELECT
             s.student_id,
@@ -33,19 +34,13 @@ $sql = "SELECT
             a.date
         FROM students s
         LEFT JOIN attendance a ON s.student_id = a.student_id
-            AND a.subject_id = ?
-            AND a.date = ?
+            AND a.subject_id = :subject_id
+            AND a.date = :date
         ORDER BY s.roll_number";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("is", $subject_id, $date);
-$stmt->execute();
-$result = $stmt->get_result();
-
-$students = [];
-while ($row = $result->fetch_assoc()) {
-    $students[] = $row;
-}
+$stmt->execute(['subject_id' => $subject_id, 'date' => $date]);
+$students = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 echo json_encode([
     'success' => true,
@@ -53,6 +48,6 @@ echo json_encode([
     'date' => $date
 ]);
 
-$stmt->close();
-$conn->close();
+$stmt = null;
+$conn = null;
 ?>

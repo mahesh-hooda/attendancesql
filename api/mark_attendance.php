@@ -22,7 +22,8 @@ $teacher_id = $_SESSION['user_id'];
 $conn = getDbConnection();
 
 // Start transaction for data consistency
-$conn->begin_transaction();
+// PDO uses beginTransaction instead of begin_transaction
+$conn->beginTransaction();
 
 try {
     // ===============================================
@@ -30,29 +31,31 @@ try {
     // Removing existing attendance records for the date
     // This allows teachers to update attendance if needed
     // ===============================================
-    $delete_sql = "DELETE FROM attendance WHERE subject_id = ? AND date = ?";
+    $delete_sql = "DELETE FROM attendance WHERE subject_id = :subject_id AND date = :date";
     $delete_stmt = $conn->prepare($delete_sql);
-    $delete_stmt->bind_param("is", $subject_id, $date);
-    $delete_stmt->execute();
-    $delete_stmt->close();
+    $delete_stmt->execute(['subject_id' => $subject_id, 'date' => $date]);
 
     // ===============================================
     // SQL DEMO: INSERT query in a loop
     // Bulk inserting attendance records for multiple students
+    // Using PDO with named parameters
     // ===============================================
     $insert_sql = "INSERT INTO attendance (student_id, subject_id, teacher_id, date, status)
-                   VALUES (?, ?, ?, ?, ?)";
+                   VALUES (:student_id, :subject_id, :teacher_id, :date, :status)";
     $insert_stmt = $conn->prepare($insert_sql);
 
     foreach ($attendance as $record) {
         $student_id = $record['student_id'];
         $status = $record['status'];
 
-        $insert_stmt->bind_param("iiiss", $student_id, $subject_id, $teacher_id, $date, $status);
-        $insert_stmt->execute();
+        $insert_stmt->execute([
+            'student_id' => $student_id,
+            'subject_id' => $subject_id,
+            'teacher_id' => $teacher_id,
+            'date' => $date,
+            'status' => $status
+        ]);
     }
-
-    $insert_stmt->close();
 
     // Commit transaction
     $conn->commit();
@@ -65,12 +68,12 @@ try {
 
 } catch (Exception $e) {
     // Rollback on error
-    $conn->rollback();
+    $conn->rollBack();
     echo json_encode([
         'success' => false,
         'message' => 'Error marking attendance: ' . $e->getMessage()
     ]);
 }
 
-$conn->close();
+$conn = null;
 ?>
