@@ -1,6 +1,6 @@
-# NSUT IT Branch - Teacher Attendance Portal
+# NSUT IT Branch - Teacher Attendance Portal (SQLite)
 
-A lightweight, Bootstrap-based attendance management system for demonstrating SQL operations in a real-world application.
+A lightweight, Bootstrap-based attendance management system for demonstrating SQL operations using SQLite database.
 
 ## Features
 
@@ -9,6 +9,16 @@ A lightweight, Bootstrap-based attendance management system for demonstrating SQ
 - **SQL Demonstrations**: Extensive use of SQL queries with detailed comments
 - **Bootstrap UI**: Responsive, modern interface
 - **Mock Data**: Pre-populated with 20 students, 5 teachers, and 5 subjects
+- **SQLite Database**: Zero configuration, file-based database
+- **PDO**: Database abstraction layer for better portability
+
+## Why SQLite?
+
+- **Zero Configuration**: No database server setup required
+- **Portable**: Single file database, easy to backup and move
+- **Lightweight**: Perfect for demos and small applications
+- **ACID Compliant**: Full transaction support
+- **Standard SQL**: Most SQL features work as expected
 
 ## SQL Concepts Demonstrated
 
@@ -22,10 +32,11 @@ This project showcases various SQL operations:
 6. **Aggregate Functions** - COUNT(), SUM(), ROUND()
 7. **CASE Statements** - conditional logic in queries
 8. **GROUP BY** - with multiple aggregates
-9. **Prepared Statements** - preventing SQL injection
+9. **Prepared Statements** - preventing SQL injection with PDO
 10. **Transactions** - ensuring data consistency
 11. **CREATE VIEW** - for attendance summaries
 12. **Complex JOINs** - multiple table relationships
+13. **CHECK Constraints** - SQLite's alternative to ENUM
 
 ## Project Structure
 
@@ -34,27 +45,47 @@ attendancesql/
 ├── index.php                    # Login page (both student & teacher)
 ├── teacher_dashboard.php        # Teacher interface for marking attendance
 ├── student_dashboard.php        # Student interface for viewing attendance
-├── config.php                   # Database configuration & helper functions
+├── config.php                   # SQLite/PDO configuration
 ├── logout.php                   # Session cleanup
-├── database.sql                 # Complete database schema with mock data
+├── database.sql                 # SQLite database schema with mock data
+├── init_database.php            # Database initialization script
 ├── .htaccess                    # Apache configuration
 ├── api/
-│   ├── login.php               # Authentication API (SQL SELECT demo)
+│   ├── login.php               # Authentication API (PDO SELECT demo)
 │   ├── get_teacher_subjects.php # Fetch teacher's subjects (JOIN demo)
 │   ├── get_students.php        # Fetch students with attendance (LEFT JOIN demo)
 │   ├── mark_attendance.php     # Save attendance records (INSERT/DELETE demo)
 │   └── get_student_attendance.php # Attendance statistics (GROUP BY demo)
-└── README.md                    # This file
+├── README.md                    # This file
+└── INSTALLATION_GUIDE_SQLITE.md # Quick setup guide
+```
+
+## Quick Start (3 Steps)
+
+```bash
+cd attendancesql
+php init_database.php      # Creates and populates database
+php -S localhost:8000      # Starts web server
+# Open http://localhost:8000
 ```
 
 ## Setup Instructions
 
 ### Prerequisites
 
-- PHP 7.4 or higher
-- MySQL 5.7 or higher (or MariaDB)
-- Apache/Nginx web server
-- phpMyAdmin (optional, for database management)
+- PHP 7.4 or higher **with PDO SQLite extension**
+- Apache/Nginx web server (or PHP built-in server)
+- SQLite 3 (usually pre-installed on most systems)
+
+**Check PHP SQLite Support:**
+```bash
+php -m | grep -i pdo_sqlite
+```
+
+If not installed:
+- **Ubuntu/Debian**: `sudo apt-get install php-sqlite3`
+- **macOS**: Included by default with PHP
+- **Windows (XAMPP)**: Included by default
 
 ### Installation Steps
 
@@ -65,58 +96,48 @@ git clone <repository-url>
 cd attendancesql
 ```
 
-#### 2. Create Database
+#### 2. Initialize Database
 
-Open phpMyAdmin or MySQL CLI and execute:
-
-```sql
-CREATE DATABASE nsut_attendance;
-```
-
-#### 3. Import Database Schema
-
-**Option A: Using phpMyAdmin**
-- Open phpMyAdmin
-- Select `nsut_attendance` database
-- Click "Import" tab
-- Choose `database.sql` file
-- Click "Go"
-
-**Option B: Using MySQL CLI**
+**Option A: Using PHP Script (Recommended)**
 
 ```bash
-mysql -u root -p nsut_attendance < database.sql
+php init_database.php
 ```
 
-#### 4. Configure Database Connection
+This will:
+- Create `nsut_attendance.db` file
+- Create all tables
+- Insert mock data (20 students, 5 teachers, 5 subjects)
+- Show statistics
 
-Edit `config.php` and update database credentials if needed:
-
-```php
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');           // Your MySQL password
-define('DB_NAME', 'nsut_attendance');
-```
-
-#### 5. Set Up Web Server
-
-**For XAMPP/WAMP:**
-- Copy project folder to `htdocs/` or `www/`
-- Access: `http://localhost/attendancesql/`
-
-**For PHP Built-in Server (Development):**
+**Option B: Using SQLite CLI**
 
 ```bash
-cd attendancesql
+sqlite3 nsut_attendance.db < database.sql
+```
+
+#### 3. Set Permissions (Linux/Mac only)
+
+```bash
+chmod 666 nsut_attendance.db
+chmod 777 .
+```
+
+#### 4. Start Web Server
+
+**For PHP Built-in Server:**
+```bash
 php -S localhost:8000
 ```
 
-Then open: `http://localhost:8000`
+**For XAMPP/WAMP:**
+- Copy project folder to `htdocs/` or `www/`
+- Start Apache (MySQL NOT required!)
+- Access: `http://localhost/attendancesql/`
 
-#### 6. Access the Application
+#### 5. Access the Application
 
-Open your browser and navigate to the application URL.
+Open your browser and navigate to `http://localhost:8000`
 
 ## Demo Credentials
 
@@ -181,6 +202,21 @@ All students follow the pattern:
 - Calculates total classes, attended, and percentage
 - Uses aggregate functions (COUNT, SUM, CASE)
 
+## Verify Installation
+
+```bash
+# Check if database exists
+ls -lh nsut_attendance.db
+
+# Count students
+sqlite3 nsut_attendance.db "SELECT COUNT(*) FROM students;"
+# Should return: 20
+
+# View first student
+sqlite3 nsut_attendance.db "SELECT roll_number, name FROM students LIMIT 1;"
+# Should return: 2021IT001|Aarav Sharma
+```
+
 ## SQL Query Examples
 
 All SQL operations are documented with comments in the code. Here are some key queries:
@@ -195,11 +231,13 @@ SELECT
     s.subject_name,
     COUNT(a.attendance_id) AS total_classes,
     SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END) AS classes_attended,
-    ROUND((SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END) / COUNT(a.attendance_id)) * 100, 2) AS attendance_percentage
+    ROUND((SUM(CASE WHEN a.status = 'Present' THEN 1 ELSE 0 END) * 100.0 / COUNT(a.attendance_id)), 2) AS attendance_percentage
 FROM subjects s
-LEFT JOIN attendance a ON s.subject_id = a.subject_id AND a.student_id = ?
+LEFT JOIN attendance a ON s.subject_id = a.subject_id AND a.student_id = :student_id
 GROUP BY s.subject_id
 ```
+
+**Note**: SQLite requires `100.0` (not `100`) for float division.
 
 ### 2. Fetch Students with Attendance Status (LEFT JOIN)
 
@@ -208,20 +246,24 @@ GROUP BY s.subject_id
 SELECT s.student_id, s.roll_number, s.name, a.status
 FROM students s
 LEFT JOIN attendance a ON s.student_id = a.student_id
-    AND a.subject_id = ? AND a.date = ?
+    AND a.subject_id = :subject_id AND a.date = :date
 ORDER BY s.roll_number
 ```
+
+**Note**: Using PDO named parameters (`:param`) for security.
 
 ### 3. Mark Attendance (Transaction)
 
 ```sql
 -- Location: api/mark_attendance.php
 BEGIN TRANSACTION;
-DELETE FROM attendance WHERE subject_id = ? AND date = ?;
+DELETE FROM attendance WHERE subject_id = :subject_id AND date = :date;
 INSERT INTO attendance (student_id, subject_id, teacher_id, date, status)
-VALUES (?, ?, ?, ?, ?);
+VALUES (:student_id, :subject_id, :teacher_id, :date, :status);
 COMMIT;
 ```
+
+**Note**: PDO uses `beginTransaction()` and `commit()` methods.
 
 ## Database Schema
 
@@ -235,23 +277,74 @@ COMMIT;
 
 ### Relationships
 
-- `attendance.student_id` → `students.student_id` (Foreign Key)
-- `attendance.subject_id` → `subjects.subject_id` (Foreign Key)
-- `attendance.teacher_id` → `teachers.teacher_id` (Foreign Key)
-- `subject_teacher_mapping.subject_id` → `subjects.subject_id` (Foreign Key)
-- `subject_teacher_mapping.teacher_id` → `teachers.teacher_id` (Foreign Key)
+- `attendance.student_id` → `students.student_id` (Foreign Key, CASCADE)
+- `attendance.subject_id` → `subjects.subject_id` (Foreign Key, CASCADE)
+- `attendance.teacher_id` → `teachers.teacher_id` (Foreign Key, CASCADE)
+- `subject_teacher_mapping.subject_id` → `subjects.subject_id` (Foreign Key, CASCADE)
+- `subject_teacher_mapping.teacher_id` → `teachers.teacher_id` (Foreign Key, CASCADE)
+
+**Note**: Foreign keys are enabled with `PRAGMA foreign_keys = ON;` in config.php
+
+## Viewing Database Contents
+
+### Using SQLite CLI
+
+```bash
+sqlite3 nsut_attendance.db
+
+# List tables
+.tables
+
+# Show table schema
+.schema students
+
+# Query data
+SELECT * FROM students LIMIT 5;
+
+# Exit
+.quit
+```
+
+### Using DB Browser for SQLite
+
+Download: https://sqlitebrowser.org/
+- Open `nsut_attendance.db`
+- Browse tables, run queries visually
 
 ## Troubleshooting
 
-### Database Connection Error
+### "could not find driver" Error
 
-- Verify MySQL is running
-- Check database credentials in `config.php`
-- Ensure database `nsut_attendance` exists
+**Solution:**
+```bash
+# Check if PDO SQLite is installed
+php -m | grep pdo_sqlite
+
+# Install if missing (Ubuntu/Debian)
+sudo apt-get install php-sqlite3
+sudo systemctl restart apache2
+```
+
+### "attempt to write a readonly database" Error
+
+**Solution:**
+```bash
+# Make database and directory writable
+chmod 666 nsut_attendance.db
+chmod 777 .
+```
+
+### Database Locked Error
+
+**Solution:**
+- Close all other connections to the database
+- Remove `.db-journal` files if database is not in use
+- Ensure proper transaction handling (commit/rollback)
 
 ### Login Not Working
 
-- Check if database tables are created
+- Run `php init_database.php` to recreate database
+- Check if database file exists: `ls -lh nsut_attendance.db`
 - Verify credentials match those in database
 - Check PHP session is enabled
 
@@ -259,27 +352,100 @@ COMMIT;
 
 - Check browser console for JavaScript errors
 - Verify API endpoints are accessible
-- Check MySQL error logs
+- Check database file permissions (should be writable)
 
 ## Technologies Used
 
 - **Frontend**: HTML5, CSS3, Bootstrap 5.3, JavaScript (ES6)
-- **Backend**: PHP 7.4+
-- **Database**: MySQL 5.7+ / MariaDB
+- **Backend**: PHP 7.4+ with PDO
+- **Database**: SQLite 3
 - **Icons**: Font Awesome 6.4
 - **Server**: Apache/Nginx or PHP Built-in Server
+
+## SQLite-Specific Features
+
+### Data Type Conversions
+
+```
+MySQL                    →  SQLite
+─────────────────────────────────────
+INT AUTO_INCREMENT       →  INTEGER AUTOINCREMENT
+VARCHAR(100)             →  TEXT
+TIMESTAMP                →  DATETIME
+ENUM('A', 'B')          →  TEXT CHECK(col IN ('A', 'B'))
+```
+
+### Float Division
+
+SQLite requires explicit float in division:
+```sql
+-- MySQL: (sum / count) * 100
+-- SQLite: (sum * 100.0 / count)  -- Note: 100.0 not 100
+```
+
+### Foreign Keys
+
+Foreign keys must be explicitly enabled:
+```php
+$conn->exec('PRAGMA foreign_keys = ON;');
+```
+
+### PDO Named Parameters
+
+All queries use PDO named parameters:
+```php
+$stmt = $conn->prepare("SELECT * FROM students WHERE email = :email");
+$stmt->execute(['email' => $email]);
+```
+
+## Backup and Restore
+
+### Backup
+```bash
+# Simple copy
+cp nsut_attendance.db backup.db
+
+# SQL dump
+sqlite3 nsut_attendance.db .dump > backup.sql
+```
+
+### Restore
+```bash
+# From copy
+cp backup.db nsut_attendance.db
+
+# From SQL dump
+sqlite3 nsut_attendance.db < backup.sql
+```
 
 ## Security Notes
 
 ⚠️ **This is a demo project for educational purposes**
 
 For production use, implement:
-- Password hashing (bcrypt/argon2)
+- Password hashing (bcrypt/argon2) - currently using plain text
 - CSRF protection
 - Input validation and sanitization
-- Session security measures
+- Session security measures (secure cookies, regeneration)
 - HTTPS encryption
-- Role-based access control (RBAC)
+- Rate limiting for login attempts
+- Prepared statements (✓ already implemented with PDO)
+
+## Advantages of SQLite for This Project
+
+✓ **Zero Setup** - No MySQL server configuration needed
+✓ **Portable** - Single file, easy to share and backup
+✓ **Fast** - Perfect for small to medium datasets
+✓ **ACID Compliant** - Full transaction support
+✓ **Cross-platform** - Works on Windows, Mac, Linux
+✓ **No Authentication** - Simpler for demos and development
+✓ **Easy Backup** - Just copy the .db file
+
+## Additional Documentation
+
+- **INSTALLATION_GUIDE_SQLITE.md** - Detailed platform-specific setup instructions
+- **SQL_DEMOS.md** - Comprehensive SQL reference with all 13 demonstrations
+- **database.sql** - Well-commented schema with SQL demos
 
 ## License
 
